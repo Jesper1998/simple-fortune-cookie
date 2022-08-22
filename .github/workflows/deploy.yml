@@ -5,67 +5,62 @@ jobs:
   Test-Kubernetes:
     runs-on: self-hosted
     steps:
-      - name: Set Vars
+      - name: Set Variables
         id: vars
         run: |
           echo "::set-output name=version::${GITHUB_REF#refs/tags/}"
           echo "::set-output name=revision::${GITHUB_SHA}"
 
-      - name: Checkout Repo
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: removing existing services and deployments
+      - name: Cleanup test enviromments
         run: |
-          chmod +x ${GITHUB_WORKSPACE}/scripts/remove_kubernetes.sh
-          ${GITHUB_WORKSPACE}/scripts/remove_kubernetes.sh
-          export docker_image=${docker_image2}
-          ${GITHUB_WORKSPACE}/scripts/remove_kubernetes.sh
+          chmod +x ${GITHUB_WORKSPACE}/scripts/cleanupTestEnvironment.sh
+          ${GITHUB_WORKSPACE}/scripts/cleanupTestEnvironment.sh
+          export docker_image=${second_docker_image}
+          ${GITHUB_WORKSPACE}/scripts/cleanupTestEnvironment.sh
         env:
           docker_image: go_backend
-          docker_image2: go_frontend
+          second_docker_image: go_frontend
           docker_run_id: ${{ github.run_id }}-${{ github.run_number }}
 
-      - name: Runing Backend
+      - name: Run Backend in test environment
         run: |
           chmod +x ${GITHUB_WORKSPACE}/scripts/run_kubernetes.sh
           ${GITHUB_WORKSPACE}/scripts/run_kubernetes.sh
         env:
-          docker_id: ${{secrets.DOCKER_HUB_ID}}
+          docker_id: jedie20
           docker_image: go_backend
           docker_tag: ${{ steps.vars.outputs.version }}
           docker_run_id: ${{ github.run_id }}-${{ github.run_number }}
           docker_port: 9000
 
-      - name: Runing Frontend
+      - name: Run Frontend in test environment
         run: |
           chmod +x ${GITHUB_WORKSPACE}/scripts/run_kubernetes.sh
           ${GITHUB_WORKSPACE}/scripts/run_kubernetes.sh
         env:
-          docker_id: ${{secrets.DOCKER_HUB_ID}}
+          docker_id: jedie20
           docker_image: go_frontend
           docker_tag: ${{ steps.vars.outputs.version }}
           docker_run_id: ${{ github.run_id }}-${{ github.run_number }}
           docker_port: 8080
 
-      - name: Remove Backend Test
+      - name: Cleanup test environments after scaling, durability etc.
         run: |
-          chmod +x ${GITHUB_WORKSPACE}/scripts/remove_kubernetes.sh
-          ${GITHUB_WORKSPACE}/scripts/remove_kubernetes.sh
+          chmod +x ${GITHUB_WORKSPACE}/scripts/cleanupTestEnvironment.sh
+          ${GITHUB_WORKSPACE}/scripts/cleanupTestEnvironment.sh
+          export docker_image=${second_docker_image}
+          ${GITHUB_WORKSPACE}/scripts/cleanupTestEnvironment.sh
         env:
           docker_image: go_backend
+          second_docker_image: go_frontend
           docker_run_id: ${{ github.run_id }}-${{ github.run_number }}
 
-      - name: Remove Frontend Test
+      - name: Deploy to production
         run: |
-          chmod +x ${GITHUB_WORKSPACE}/scripts/remove_kubernetes.sh
-          ${GITHUB_WORKSPACE}/scripts/remove_kubernetes.sh
-        env:
-          docker_image: go_frontend
-          docker_run_id: ${{ github.run_id }}-${{ github.run_number }}
-
-      - name: Deploy
-        run: |
-          chmod +x ${GITHUB_WORKSPACE}/scripts/deploy.sh
-          ${GITHUB_WORKSPACE}/scripts/deploy.sh
+          chmod +x ${GITHUB_WORKSPACE}/scripts/deployToProd.sh
+          ${GITHUB_WORKSPACE}/scripts/deployToProd.sh
         env:
           docker_tag: ${{ steps.vars.outputs.version }}
